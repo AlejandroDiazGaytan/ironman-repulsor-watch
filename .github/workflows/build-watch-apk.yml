@@ -1,0 +1,66 @@
+name: Build Galaxy Watch 6 Repulsor APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Iron Man Repulsor Wear OS APK
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Convert Audio to Zero-Latency PCM WAV
+      run: |
+        if [ -f app/src/main/res/raw/repulsor_charge.m4a ]; then
+          ffmpeg -y -i app/src/main/res/raw/repulsor_charge.m4a -vn -acodec pcm_s16le -ar 44100 -ac 1 app/src/main/res/raw/repulsor_charge.wav
+          rm app/src/main/res/raw/repulsor_charge.m4a
+        fi
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.5'
+
+    - name: Build Wear OS APK
+      run: |
+        gradle assembleDebug --stacktrace
+
+    - name: Rename APK
+      run: |
+        cp app/build/outputs/apk/debug/app-debug.apk IronMan-Repulsor-Watch6.apk
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: IronMan-Repulsor-Watch6-APK
+        path: IronMan-Repulsor-Watch6.apk
+        retention-days: 30
+
+    - name: Create GitHub Release with APK
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v1.0.0
+        name: "Iron Man Repulsor v1.0.0 (Galaxy Watch 6 / Wear OS)"
+        body: |
+          ### 🦾 Iron Man Repulsor (MK-85) para Samsung Galaxy Watch 6
+          - 🔊 **Audio Real:** Efecto de carga de plasma de 0ms de latencia (SoundPool PCM WAV).
+          - 👋 **Detección por Acelerómetro:** Se activa automáticamente al levantar la mano.
+          - 📳 **Vibración Háptica:** Patrón progresivo sincronizado con la carga del repulsor.
+          - 🔵 **HUD Reactor Arc:** Animación circular a 60 FPS para pantalla Super AMOLED + selector de sensibilidad.
+        files: IronMan-Repulsor-Watch6.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
